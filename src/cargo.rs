@@ -57,14 +57,21 @@ fn toolchain_suffix(triple: &str, arch: &str, bin: &str) -> PathBuf {
     .collect()
 }
 
-fn sysroot_suffix(arch: &str) -> PathBuf {
+fn toolchain_bin_suffix(arch: &str, bin: &str) -> PathBuf {
     [
         "toolchains",
         "llvm",
         "prebuilt",
         arch,
-        "sysroot"
+        "bin",
+        &format!("{}{}", bin, BIN_EXT),
     ]
+    .iter()
+    .collect()
+}
+
+fn sysroot_suffix(arch: &str) -> PathBuf {
+    ["toolchains", "llvm", "prebuilt", arch, "sysroot"]
         .iter()
         .collect()
 }
@@ -82,7 +89,11 @@ pub(crate) fn run(
     cargo_manifest: &Path,
     bindgen: bool,
 ) -> std::process::ExitStatus {
-    let target_ar = Path::new(&ndk_home).join(toolchain_suffix(triple, ARCH, "ar"));
+    let mut target_ar = ndk_home.join(toolchain_suffix(triple, ARCH, "ar"));
+    if !target_ar.exists() {
+        target_ar = ndk_home.join(toolchain_bin_suffix(ARCH, "llvm-ar"));
+    }
+
     let target_linker = Path::new(&ndk_home).join(clang_suffix(triple, ARCH, platform, ""));
     let target_cxx = Path::new(&ndk_home).join(clang_suffix(triple, ARCH, platform, "++"));
     let target_sysroot = Path::new(&ndk_home).join(sysroot_suffix(ARCH));
@@ -136,7 +147,10 @@ pub(crate) fn run(
 }
 
 pub(crate) fn strip(ndk_home: &Path, triple: &str, bin_path: &Path) -> std::process::ExitStatus {
-    let target_strip = Path::new(&ndk_home).join(toolchain_suffix(triple, ARCH, "strip"));
+    let mut target_strip = ndk_home.join(toolchain_suffix(triple, ARCH, "strip"));
+    if !target_strip.exists() {
+        target_strip = ndk_home.join(toolchain_bin_suffix(ARCH, "llvm-strip"));
+    }
 
     log::debug!("strip: {}", &target_strip.display());
 
